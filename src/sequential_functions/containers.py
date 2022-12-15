@@ -1,5 +1,6 @@
-
-
+from threading import Thread
+import multiprocessing 
+from multiprocessing import Process, Queue
 
 class Compose():
     def __init__(self, *functions):
@@ -52,17 +53,58 @@ class Batch(Compose):
 
 
 
-class MultiProcessSequence():
-    def __init__(self,*callables):
-        self.function_list = callables
+class MultiProcess(Compose):
 
-    def __call__(self,g):
-        with Pool(10) as p:
-            yield from p.imap(self.forward, g)
+    class EndToken: pass
 
-    def forward(self,x):
-        for f in self.function_list:
-            x = f(x)
-        return x
+    def __init__(self,*functions, num_workers=0):
+        super().__init__(*functions)
+        self.num_workers = num_workers
 
-special_callable_types = (type(Compose), type(MultiProcessSequence), type(Batch))
+    def __call__(self,generator):
+
+        input_queue = Queue(maxsize=1)
+        output_queue = Queue(maxsize=1)
+
+        self.start_thread_to_pump_generator_into_queue(generator, input_queue)
+
+        self.start_processes(input_queue, output_queue)
+
+
+        while True:
+            item = output_queue.get()
+            print("out queue",item)
+            yield item
+
+    
+    def start_thread_to_pump_generator_into_queue(self,generator,queue):
+
+        def run():
+            for item in generator:
+                queue.put(item)
+
+            while True:
+                queue.put(self.EndToken())
+
+        thread = Thread(target=run)
+        thread.start()
+
+    def start_processes(self, input_queue, output_queue):
+        
+        process_list = []
+        for i in range(self.num_workers):
+            p = Process(
+                target=self.run_process,
+                args=(input_queue, output_queue),
+            )
+            p.start()
+            process_list.append(p)
+        return process_list 
+
+    def run_process(self, input_queue, output_queue):
+        print("process started")
+        while True:
+            item = input_queue.get()
+            if isinstance(item, MultiProcess.EndToken):
+                break
+            output_queue.put(item)

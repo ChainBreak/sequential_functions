@@ -1,5 +1,5 @@
 import pytest
-from sequential_functions import Compose, Batch
+from sequential_functions import Compose, Batch, MultiProcess
 
 
   
@@ -61,6 +61,20 @@ def test_batch_nested():
 
     x = list(f(range(n)))
     y = [double(x) for x in range(n)]
+    assert x==y
+
+
+def test_multi_process():
+    f = MultiProcess(
+        double,
+        sub_1,
+        num_workers=3,
+    )
+
+    n = 10
+
+    x = list(f(range(n)))
+    y = [sub_1(double(x)) for x in range(n)]
     assert x==y
 
 def double(x):
