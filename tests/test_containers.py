@@ -1,6 +1,6 @@
 import pytest
 from sequential_functions import Compose, Batch, MultiProcess
-
+import os
 
   
 
@@ -67,15 +67,19 @@ def test_batch_nested():
 def test_multi_process():
     f = MultiProcess(
         double,
-        sub_1,
-        num_workers=3,
+        sub_1,       
+        num_workers=2,
     )
 
     n = 10
 
     x = list(f(range(n)))
     y = [sub_1(double(x)) for x in range(n)]
-    assert x==y
+    assert set(x)==set(y)
+
+def print_process(x):
+    print(os.getpid())
+    return x
 
 def double(x):
     return 2 * x

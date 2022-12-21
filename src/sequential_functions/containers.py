@@ -1,6 +1,7 @@
 from threading import Thread
 import multiprocessing 
 from multiprocessing import Process, Queue
+import queue 
 
 class Compose():
     def __init__(self, *functions):
@@ -61,31 +62,35 @@ class MultiProcess(Compose):
         super().__init__(*functions)
         self.num_workers = num_workers
 
+        self.queue_timeout=0.3
+
     def __call__(self,generator):
 
         input_queue = Queue(maxsize=1)
         output_queue = Queue(maxsize=1)
 
-        self.start_thread_to_pump_generator_into_queue(generator, input_queue)
+        process_list = self.start_processes(input_queue, output_queue)
 
-        self.start_processes(input_queue, output_queue)
+        self.start_thread_to_pump_generator_into_queue(generator, input_queue, process_list)
 
+        yield from self.yield_items_from_output_queue_until_complete(output_queue, process_list)
 
-        while True:
-            item = output_queue.get()
-            print("out queue",item)
-            yield item
-
-    
-    def start_thread_to_pump_generator_into_queue(self,generator,queue):
+        input_queue.close()
+        output_queue.close()
+        
+    def start_thread_to_pump_generator_into_queue(self, generator, input_queue,process_list ):
 
         def run():
             for item in generator:
-                queue.put(item)
+                input_queue.put(item)
 
-            while True:
-                queue.put(self.EndToken())
-
+            while self.any_process_is_alive(process_list):
+                try:
+                    input_queue.put(self.EndToken(),timeout=self.queue_timeout)
+                except queue.Full:
+                    
+                    return
+            
         thread = Thread(target=run)
         thread.start()
 
@@ -94,6 +99,7 @@ class MultiProcess(Compose):
         process_list = []
         for i in range(self.num_workers):
             p = Process(
+                name=f"MultiProcess_{i}",
                 target=self.run_process,
                 args=(input_queue, output_queue),
             )
@@ -102,9 +108,32 @@ class MultiProcess(Compose):
         return process_list 
 
     def run_process(self, input_queue, output_queue):
-        print("process started")
-        while True:
-            item = input_queue.get()
-            if isinstance(item, MultiProcess.EndToken):
-                break
+        
+        def generator():
+            while True:
+                item = input_queue.get()
+                if isinstance(item, MultiProcess.EndToken):
+                    return
+                else:
+                    yield item
+
+        output_generator = super().__call__( generator() )
+
+        for item in output_generator:
             output_queue.put(item)
+
+    def yield_items_from_output_queue_until_complete(self,output_queue,process_list):
+        while True:
+            try:
+                yield output_queue.get(timeout=self.queue_timeout)
+
+            except queue.Empty:
+                if not self.any_process_is_alive(process_list):
+                    
+                    return
+
+    def any_process_is_alive(self, process_list):
+        for process in process_list:
+            if process.is_alive():
+                return True
+        return False
