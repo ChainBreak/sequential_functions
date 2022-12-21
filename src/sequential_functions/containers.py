@@ -88,8 +88,7 @@ class MultiProcess(Compose):
                 try:
                     input_queue.put(self.EndToken(),timeout=self.queue_timeout)
                 except queue.Full:
-                    
-                    return
+                    pass
             
         thread = Thread(target=run)
         thread.start()
