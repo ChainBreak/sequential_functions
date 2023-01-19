@@ -1,5 +1,5 @@
 import pytest
-from sequential_functions import Compose, Batch, MultiProcess
+from sequential_functions import Compose, MultiProcess
 import os
 
   
@@ -35,35 +35,6 @@ def test_nested_compose():
     y = [sub_1(sub_1(double(double(x)))) for x in range(n)]
     assert x==y
 
-def test_batch():
-    f = Batch(
-        assert_batch_double,
-        batch_size=2,
-    )
-
-    n = 10
-
-    x = list(f(range(n)))
-    y = [double(x) for x in range(n)]
-    assert x==y
-
-def test_batch_nested():
-    f = Compose(
-        Batch(
-            Compose(
-                assert_batch_double,
-            ),
-            batch_size=2,
-        ),
-    )
-
-    n = 10
-
-    x = list(f(range(n)))
-    y = [double(x) for x in range(n)]
-    assert x==y
-
-
 def test_multi_process():
     f = MultiProcess(
         double,
@@ -88,8 +59,8 @@ def test_exception():
 
 def test_multi_process_exception():
     f = MultiProcess(
-        throw_exception,  
         double,     
+        throw_exception,  
         num_workers=1,
     )
 
