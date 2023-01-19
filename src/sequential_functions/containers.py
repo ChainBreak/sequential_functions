@@ -37,11 +37,14 @@ class MultiProcess(Compose):
 
     def worker_function(self,item):
 
+        # Wrap single item in generator for passing to the function chain
         def generator():
             yield item
 
+        # Call the parent Compose class
         output_generator = super().__call__( generator() )
 
+        # Collate all items incase there are more outputs than inputs
         collated_items = list(output_generator)
     
         return collated_items
