@@ -1,7 +1,7 @@
 from threading import Thread
 import multiprocessing 
 from multiprocessing import Pool
-import queue 
+import types
 
 class Compose():
     def __init__(self, *functions):
@@ -19,7 +19,14 @@ class Compose():
 
     def wrap_function_in_generator(self,function, generator):
         for item in generator:
-            yield function(item)
+
+            result_item = function(item)
+
+            # Functions can return item or generators that yield items
+            if isinstance(result_item, types.GeneratorType):
+                yield from result_item
+            else:
+                yield result_item
       
 class MultiProcess(Compose):
 
