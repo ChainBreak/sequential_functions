@@ -1,5 +1,5 @@
 import pytest
-from sequential_functions import Compose, MultiProcess
+from sequential_functions import Compose
 import os
 
   
@@ -36,7 +36,7 @@ def test_nested_compose():
     assert x==y
 
 def test_multi_process():
-    f = MultiProcess(
+    f = Compose(
         double,
         sub_1,       
         num_workers=2,
@@ -59,7 +59,7 @@ def test_exception():
         x = list(f(range(n)))
 
 def test_multi_process_exception():
-    f = MultiProcess(
+    f = Compose(
         double,     
         throw_exception,  
         num_workers=3,
@@ -70,7 +70,7 @@ def test_multi_process_exception():
         x = list(f(range(n)))
 
 # def test_multi_process_exit():
-#     f = MultiProcess(
+#     f = Compose(
 #         double,     
 #         system_exit,  
 #         num_workers=3,
@@ -80,8 +80,8 @@ def test_multi_process_exception():
 
 #     x = list(f(range(n)))
 
-def test_functions_that_yield_more_outputs_than_inputs_multiprocess():
-    f = MultiProcess(
+def test_functions_that_yield_more_outputs_than_inputs_Compose():
+    f = Compose(
         double,
         yield_twice,
         num_workers=3,

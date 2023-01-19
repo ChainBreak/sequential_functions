@@ -1,1 +1,1 @@
-from .containers import Compose, MultiProcess
+from .containers import Compose

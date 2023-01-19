@@ -8,26 +8,22 @@ Under the hood, functions are wrapped in generators so that a sequence can be co
 import sequential_functions as sf
 
 def main():
+    
+    # Build a generator chain using Compose
     sequence = sf.Compose([
-        load_image,
-        convert_grayscale,
-        theshold,
+        square,
+        plus_one,
     ])
 
-    path_list = ["cat.jpg", "dog.jpg"]
+    # Use list to pull items through the generator chain
+    outputs = list(sequence(range(5)))
+    
+    # outputs = [1,2,5,10,17]
 
-    # pull the paths through the sequence one by one
-    for image in sequence(path_list):
-        cv2.imshow(image)
-        cv2.waitKey(1000)
+def square(x):
+    return x*x
 
-def load_image(path):
-    return cv2.imread(path)
-
-def convert_grayscale(image)
-    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-def theshold(image):
-    return cv2.threshold(img,127,255,cv.THRESH_BINARY)
+def plus_one(x):
+    return x + 1
 
 ```
