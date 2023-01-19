@@ -8,7 +8,7 @@ version = "0.0.1"
 authors = [
   { name="Thomas Rowntree" },
 ]
-description = "Compose functions and sequential call them. Also add some batching and mutiprocessing!"
+description = "Compose functions and sequentially call them. Also allow mutiprocessing!"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
