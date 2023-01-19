@@ -75,7 +75,27 @@ def test_multi_process():
 
     x = list(f(range(n)))
     y = [sub_1(double(x)) for x in range(n)]
-    assert set(x)==set(y)
+    assert x==y
+
+def test_exception():
+    f = Compose(
+        throw_exception,       
+    )
+
+    n = 10
+    with pytest.raises(FakeException):
+        x = list(f(range(n)))
+
+def test_multi_process_exception():
+    f = MultiProcess(
+        throw_exception,  
+        double,     
+        num_workers=1,
+    )
+
+    n = 10
+    with pytest.raises(FakeException):
+        x = list(f(range(n)))
 
 def print_process(x):
     print(os.getpid())
@@ -92,3 +112,10 @@ def assert_batch_double(x_batch):
     assert len(x_batch) > 0
     y_batch = [double(x) for x in x_batch]
     return y_batch
+
+def throw_exception(x):
+    raise FakeException()
+    return x
+
+    
+class FakeException(Exception): pass
