@@ -3,17 +3,20 @@ from sequential_functions import Compose
 import os
 
   
-@pytest.mark.parametrize("num_processes",[
-    0,
-    3,
-    20,
+@pytest.mark.parametrize("num_processes, num_threads",[
+    (0,0),
+    (3,0),
+    (20,0),
+    (0,3),
+    (0,20),
 ])
-def test_compose(num_processes):
+def test_compose(num_processes, num_threads):
 
     f = Compose(
         double,
         sub_1,
         num_processes=num_processes,
+        num_threads=num_threads,
     )
 
     n = 10
@@ -22,12 +25,14 @@ def test_compose(num_processes):
     y = [sub_1(double(x)) for x in range(n)]
     assert x==y
 
-@pytest.mark.parametrize("num_processes",[
-    0,
-    3,
-    20,
+@pytest.mark.parametrize("num_processes, num_threads",[
+    (0,0),
+    (3,0),
+    (20,0),
+    (0,3),
+    (0,20),
 ])
-def test_nested_compose(num_processes):
+def test_nested_compose(num_processes, num_threads):
 
     f = Compose(
         double,
@@ -37,6 +42,7 @@ def test_nested_compose(num_processes):
         ),
         sub_1,
         num_processes=num_processes,
+        num_threads=num_threads,
     )
 
     n = 10
@@ -45,31 +51,37 @@ def test_nested_compose(num_processes):
     y = [sub_1(sub_1(double(double(x)))) for x in range(n)]
     assert x==y
 
-@pytest.mark.parametrize("num_processes",[
-    0,
-    3,
-    20,
+@pytest.mark.parametrize("num_processes, num_threads",[
+    (0,0),
+    (3,0),
+    (20,0),
+    (0,3),
+    (0,20),
 ])
-def test_exception(num_processes):
+def test_exception(num_processes, num_threads):
     f = Compose(
         throw_exception, 
-        num_processes=num_processes,      
+        num_processes=num_processes,
+        num_threads=num_threads,      
     )
 
     n = 10
     with pytest.raises(FakeException):
         x = list(f(range(n)))
 
-@pytest.mark.parametrize("num_processes",[
-    0,
-    3,
-    20,
+@pytest.mark.parametrize("num_processes, num_threads",[
+    (0,0),
+    (3,0),
+    (20,0),
+    (0,3),
+    (0,20),
 ])
-def test_functions_that_yield_more_outputs_than_inputs(num_processes):
+def test_functions_that_yield_more_outputs_than_inputs(num_processes, num_threads):
     f = Compose(
         double,
         yield_twice,
         num_processes=num_processes,
+        num_threads=num_threads,
     )
 
     x = list(f([1,2,3,4,5]))
