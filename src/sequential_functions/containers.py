@@ -3,20 +3,19 @@ from multiprocessing import Pool
 import types
 
 class Compose():
-    def __init__(self, *functions, num_workers=0):
+    def __init__(self, *functions, num_processes=0):
         self.function_list = functions
-        self.num_workers = num_workers
+        self.num_processes = num_processes
 
     def __call__(self, input_generator):
-
-        if self.num_workers > 0:
+        if self.num_processes > 0:
             output_generator = self.build_generator_chain_in_multi_process(input_generator)
         else:
             output_generator = self.build_generator_chain(input_generator)
         return output_generator
 
     def build_generator_chain_in_multi_process(self,generator):
-        with Pool(self.num_workers) as pool:
+        with Pool(self.num_processes) as pool:
             for collated_items in pool.imap(self.worker_function, generator):
                 for item in collated_items:
                     yield item
@@ -42,15 +41,9 @@ class Compose():
 
     def worker_function(self,item):
 
-        # Wrap single item in generator for passing to the function chain
-        def generator():
-            yield item
+        output_generator = self.build_generator_chain( [item] )
 
-        # Call the parent Compose class
-        output_generator = self.build_generator_chain( generator() )
-
-        # Collate all items incase there are more outputs than inputs
-        collated_items = list(output_generator)
-    
-        return collated_items
+        # Use list to collate items incase there are more outputs than inputs
+        return list(output_generator)
+   
       
