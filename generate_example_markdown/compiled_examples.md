@@ -1,4 +1,5 @@
-## Example
+## Toy Example
+This example is too simple for a real use case but it highlights the syntax.
 ```python
 import sequential_functions as sf
 

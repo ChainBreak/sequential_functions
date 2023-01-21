@@ -1,3 +1,5 @@
+# Toy Example
+# This example is too simple for a real use case but it highlights the syntax.
 import sequential_functions as sf
 
 def square(x):
