@@ -8,6 +8,7 @@ class Compose():
         self.num_threads = num_threads
 
     def __call__(self, input_generator):
+
         if self.num_processes > 0:
             output_generator = self.build_generator_chain_with_multi_processing(input_generator)
         elif self.num_threads > 0:
@@ -17,12 +18,14 @@ class Compose():
         return output_generator
 
     def build_generator_chain_with_multi_processing(self,generator):
+
         with ProcessPoolExecutor(max_workers=self.num_processes) as pool:
             for collated_items in pool.map(self.worker_function, generator,chunksize=1):
                 for item in collated_items:
                     yield item
     
     def build_generator_chain_with_multi_threading(self,generator):
+
         with ThreadPoolExecutor(max_workers=self.num_threads) as pool:
             for collated_items in pool.map(self.worker_function, generator,chunksize=1):
                 for item in collated_items:
@@ -36,19 +39,22 @@ class Compose():
         return list(output_generator)
 
     def build_generator_chain(self, generator):
+
         for function in self.function_list:
             if isinstance(function, Compose):
                 generator = function(generator)
             else:
                 generator = self.wrap_function_in_generator(function,generator)
+
         return generator
 
-    def wrap_function_in_generator(self,function, generator):
+    def wrap_function_in_generator(self, function, generator):
+
         for item in generator:
 
             result_item = function(item)
 
-            # Functions can return item or generators that yield items
+            # Functions can return item or  yield items as a generator
             if isinstance(result_item, types.GeneratorType):
                 yield from result_item
             else:
