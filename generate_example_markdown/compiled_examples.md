@@ -152,12 +152,12 @@ print(f"total time: {end_time-start_time}")
 ```
 Output
 ```shell
-Task 0 completed by process 14303
-Task 1 completed by process 14304
-Task 2 completed by process 14305
-Task 3 completed by process 14307
-Task 4 completed by process 14306
-total time: 1.0114389980444685
+Task 0 completed by process 3973
+Task 1 completed by process 3979
+Task 2 completed by process 3999
+Task 3 completed by process 4000
+Task 4 completed by process 4001
+total time: 1.0114223799901083
 ```
 ## Multi Threading
 It's trivial to distribute work to multiple threads by providing the num_threads argument.
@@ -200,5 +200,100 @@ Task 1 completed by thread ThreadPoolExecutor-0_1
 Task 2 completed by thread ThreadPoolExecutor-0_2
 Task 3 completed by thread ThreadPoolExecutor-0_3
 Task 4 completed by thread ThreadPoolExecutor-0_4
-total time: 1.002888128045015
+total time: 1.0030579089652747
+```
+## Nesting
+Compose returns a callable that can be nesting inside another Compose.
+Each compose can use threads and processes independently.
+```python
+import sequential_functions as sf
+import threading
+import time
+import os
+
+def function_a(x):
+    print(f"function_a({x}) ran in main thread")
+    return x
+
+def function_b(x):
+    time.sleep(1) # sleep 1 second
+    print(f"function_b({x}) ran in thread {threading.current_thread().name}")
+    return x
+
+def function_c(x):
+    time.sleep(1) # sleep 1 second
+    print(f"function_c({x}) ran in process {os.getpid()}")
+    return x
+
+sequence = sf.Compose(
+    function_a,
+
+    sf.Compose(
+        function_b,
+        num_threads=3,
+    ),
+
+    sf.Compose(
+        function_c,
+        num_processes=3,
+    ),
+)
+list(sequence(range(3)))
+```
+Output
+```shell
+function_a(0) ran in main thread
+function_a(1) ran in main thread
+function_a(2) ran in main thread
+function_b(0) ran in thread ThreadPoolExecutor-0_0
+function_b(1) ran in thread ThreadPoolExecutor-0_1
+function_b(2) ran in thread ThreadPoolExecutor-0_2
+function_c(0) ran in process 4045
+function_c(1) ran in process 4046
+function_c(2) ran in process 4047
+```
+## Callables
+Functions can be any type of callable.
+Use closures and callable objects to change the behaviour of functions
+```python
+
+
+import sequential_functions as sf
+
+
+def to_string(x):
+    return str(x)
+
+def append_string(s):
+    # create new function on the fly
+    def closure(x):
+        return x + s
+    # return this new function
+    return closure
+
+class EncloseString():
+    # Callable class
+    def __init__(self,s):
+        self.s = s
+    def __call__(self,x):
+        return self.s + x + self.s
+
+sequence = sf.Compose(
+    to_string,
+    append_string(" Hello"),
+    append_string(" World!"),
+    EncloseString("**"),
+    EncloseString(".."),
+)
+
+for x in sequence(range(5)):
+    print(x)
+```
+Output
+```shell
+..**0 Hello World!**..
+..**1 Hello World!**..
+..**2 Hello World!**..
+..**3 Hello World!**..
+..**4 Hello World!**..
 ```
