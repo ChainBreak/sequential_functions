@@ -11,7 +11,7 @@ def main():
 
         for example_file in file_list:
             print(example_file)
-            
+
             name, description, code = read_file_into_string(example_file)
             output = run_file_and_collect_output_as_string(example_file)
 
@@ -22,6 +22,7 @@ def main():
             f.write("\n")
             f.write("```\n")
             
+            f.write(f"Output\n")
             f.write("```shell\n")
             f.write(output)
             f.write("```\n")
