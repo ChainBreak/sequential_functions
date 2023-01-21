@@ -3,22 +3,26 @@ This example is too simple for a real use case but it highlights the syntax.
 ```python
 import sequential_functions as sf
 
+def main():
+    # Build a generator chain using Compose
+    sequence = sf.Compose(
+        square,
+        plus_one,
+    )
+
+    # Use list to pull items through the generator chain
+    outputs = list(sequence(range(5)))
+
+    print(outputs)
+
 def square(x):
     return x*x
 
 def plus_one(x):
     return x + 1
 
-# Build a generator chain using Compose
-sequence = sf.Compose(
-    square,
-    plus_one,
-)
-
-# Use list to pull items through the generator chain
-outputs = list(sequence(range(5)))
-
-print(outputs)
+if __name__ == "__main__":
+    main()
 ```
 Output
 ```shell
@@ -30,26 +34,30 @@ Both of these methods produce the same output
 ```python
 import sequential_functions as sf
 
+def main():
+    # Method 1
+    sequence = sf.Compose(
+        square,
+        plus_one,
+    )
+    outputs = list(sequence(range(5)))
+    print(outputs,"Method 1 - Composed Sequence")
+
+    # Method 2
+    generator_chain = range(5)
+    generator_chain = (square(x) for x in generator_chain)
+    generator_chain = (plus_one(x) for x in generator_chain)
+    output = list(generator_chain)
+    print(outputs,"Method 1 - Generator Chain")
+
 def square(x):
     return x*x
 
 def plus_one(x):
     return x + 1
 
-# Method 1
-sequence = sf.Compose(
-    square,
-    plus_one,
-)
-outputs = list(sequence(range(5)))
-print(outputs,"Method 1 - Composed Sequence")
-
-# Method 2
-generator_chain = range(5)
-generator_chain = (square(x) for x in generator_chain)
-generator_chain = (plus_one(x) for x in generator_chain)
-output = list(generator_chain)
-print(outputs,"Method 1 - Generator Chain")
+if __name__ == "__main__":
+    main()
 ```
 Output
 ```shell
@@ -62,6 +70,20 @@ Each function can modify the dict as they complete their computation.
 This design seems the most readable and extensible.
 ```python
 import sequential_functions as sf
+
+def main():
+    sequence = sf.Compose(
+        create_task_dict,
+        load_image,
+        preprocess_image,
+        detect_objects,
+    )
+
+    paths = ["cat.jpg","dog.jpg"]
+    for task in sequence(paths):
+        print(f"Results: {task['image_path']}")
+        print(task["detections"])
+        print()
 
 def create_task_dict(path):
     print(f"Tasking: {path}")
@@ -83,22 +105,8 @@ def detect_objects(task):
     task["detections"] = ["box 1", "box 2"]
     return task
 
-
-sequence = sf.Compose(
-    create_task_dict,
-    load_image,
-    preprocess_image,
-    detect_objects,
-)
-
-paths = ["cat.jpg","dog.jpg"]
-for task in sequence(paths):
-    print(f"Results: {task['image_path']}")
-    print(task["detections"])
-    print()
-
-
-
+if __name__ == "__main__":
+    main()
 ```
 Output
 ```shell
@@ -126,6 +134,22 @@ import sequential_functions as sf
 import time
 import os
 
+def main():
+    sequence = sf.Compose(
+        slow_task,
+        record_process_id,
+        num_processes=5, # Simply choose the number of processes
+    )
+
+    start_time = time.perf_counter()
+
+    for x in sequence(range(5)):
+        print(x)
+
+    end_time = time.perf_counter()
+
+    print(f"total time: {end_time-start_time}")
+
 def slow_task(x):
     time.sleep(1) # sleep 1 second
     return x
@@ -133,31 +157,17 @@ def slow_task(x):
 def record_process_id(x):
     return f"Task {x} completed by process {os.getpid()}"
 
-
-sequence = sf.Compose(
-    slow_task,
-    record_process_id,
-    num_processes=5, # Simply choose the number of processes
-)
-
-start_time = time.perf_counter()
-
-for x in sequence(range(5)):
-    print(x)
-
-end_time = time.perf_counter()
-
-print(f"total time: {end_time-start_time}")
-
+if __name__ == "__main__":
+    main()
 ```
 Output
 ```shell
-Task 0 completed by process 3973
-Task 1 completed by process 3979
-Task 2 completed by process 3999
-Task 3 completed by process 4000
-Task 4 completed by process 4001
-total time: 1.0114223799901083
+Task 0 completed by process 4540
+Task 1 completed by process 4541
+Task 2 completed by process 4542
+Task 3 completed by process 4543
+Task 4 completed by process 4544
+total time: 1.0113599770702422
 ```
 ## Multi Threading
 It's trivial to distribute work to multiple threads by providing the num_threads argument.
@@ -168,6 +178,22 @@ import sequential_functions as sf
 import time
 import threading
 
+def main():
+    sequence = sf.Compose(
+        slow_task,
+        record_thread_name,
+        num_threads=5, # Simply choose the number of thread
+    )
+
+    start_time = time.perf_counter()
+
+    for x in sequence(range(5)):
+        print(x)
+
+    end_time = time.perf_counter()
+
+    print(f"total time: {end_time-start_time}")
+
 def slow_task(x):
     time.sleep(1) # sleep 1 second
     return x
@@ -176,22 +202,8 @@ def record_thread_name(x):
     name = threading.current_thread().name
     return f"Task {x} completed by thread {name}"
 
-
-sequence = sf.Compose(
-    slow_task,
-    record_thread_name,
-    num_threads=5, # Simply choose the number of thread
-)
-
-start_time = time.perf_counter()
-
-for x in sequence(range(5)):
-    print(x)
-
-end_time = time.perf_counter()
-
-print(f"total time: {end_time-start_time}")
-
+if __name__ == "__main__":
+    main()
 ```
 Output
 ```shell
@@ -200,7 +212,7 @@ Task 1 completed by thread ThreadPoolExecutor-0_1
 Task 2 completed by thread ThreadPoolExecutor-0_2
 Task 3 completed by thread ThreadPoolExecutor-0_3
 Task 4 completed by thread ThreadPoolExecutor-0_4
-total time: 1.0030579089652747
+total time: 1.0029224080499262
 ```
 ## Nesting
 Compose returns a callable that can be nesting inside another Compose.
@@ -210,6 +222,22 @@ import sequential_functions as sf
 import threading
 import time
 import os
+
+def main():
+    sequence = sf.Compose(
+        function_a,
+
+        sf.Compose(
+            function_b,
+            num_threads=3,
+        ),
+
+        sf.Compose(
+            function_c,
+            num_processes=3,
+        ),
+    )
+    list(sequence(range(3)))
 
 def function_a(x):
     print(f"function_a({x}) ran in main thread")
@@ -225,20 +253,8 @@ def function_c(x):
     print(f"function_c({x}) ran in process {os.getpid()}")
     return x
 
-sequence = sf.Compose(
-    function_a,
-
-    sf.Compose(
-        function_b,
-        num_threads=3,
-    ),
-
-    sf.Compose(
-        function_c,
-        num_processes=3,
-    ),
-)
-list(sequence(range(3)))
+if __name__ == "__main__":
+    main()
 ```
 Output
 ```shell
@@ -248,18 +264,27 @@ function_a(2) ran in main thread
 function_b(0) ran in thread ThreadPoolExecutor-0_0
 function_b(1) ran in thread ThreadPoolExecutor-0_1
 function_b(2) ran in thread ThreadPoolExecutor-0_2
-function_c(0) ran in process 4045
-function_c(1) ran in process 4046
-function_c(2) ran in process 4047
+function_c(0) ran in process 4557
+function_c(1) ran in process 4558
+function_c(2) ran in process 4559
 ```
 ## Callables
 Functions can be any type of callable.
 Use closures and callable objects to change the behaviour of functions
 ```python
-
-
 import sequential_functions as sf
 
+def main():
+    sequence = sf.Compose(
+        to_string,
+        append_string(" Hello"),
+        append_string(" World!"),
+        EncloseString("**"),
+        EncloseString(".."),
+    )
+
+    for x in sequence(range(5)):
+        print(x)
 
 def to_string(x):
     return str(x)
@@ -278,16 +303,8 @@ class EncloseString():
     def __call__(self,x):
         return self.s + x + self.s
 
-sequence = sf.Compose(
-    to_string,
-    append_string(" Hello"),
-    append_string(" World!"),
-    EncloseString("**"),
-    EncloseString(".."),
-)
-
-for x in sequence(range(5)):
-    print(x)
+if __name__ == "__main__":
+    main()
 ```
 Output
 ```shell

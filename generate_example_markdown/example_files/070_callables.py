@@ -3,6 +3,18 @@
 # Use closures and callable objects to change the behaviour of functions
 import sequential_functions as sf
 
+def main():
+    sequence = sf.Compose(
+        to_string,
+        append_string(" Hello"),
+        append_string(" World!"),
+        EncloseString("**"),
+        EncloseString(".."),
+    )
+
+    for x in sequence(range(5)):
+        print(x)
+
 def to_string(x):
     return str(x)
 
@@ -20,13 +32,5 @@ class EncloseString():
     def __call__(self,x):
         return self.s + x + self.s
 
-sequence = sf.Compose(
-    to_string,
-    append_string(" Hello"),
-    append_string(" World!"),
-    EncloseString("**"),
-    EncloseString(".."),
-)
-
-for x in sequence(range(5)):
-    print(x)
+if __name__ == "__main__":
+    main()

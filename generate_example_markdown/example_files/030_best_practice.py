@@ -4,6 +4,20 @@
 # This design seems the most readable and extensible.
 import sequential_functions as sf
 
+def main():
+    sequence = sf.Compose(
+        create_task_dict,
+        load_image,
+        preprocess_image,
+        detect_objects,
+    )
+
+    paths = ["cat.jpg","dog.jpg"]
+    for task in sequence(paths):
+        print(f"Results: {task['image_path']}")
+        print(task["detections"])
+        print()
+
 def create_task_dict(path):
     print(f"Tasking: {path}")
     task = { "image_path": path}
@@ -24,18 +38,5 @@ def detect_objects(task):
     task["detections"] = ["box 1", "box 2"]
     return task
 
-
-sequence = sf.Compose(
-    create_task_dict,
-    load_image,
-    preprocess_image,
-    detect_objects,
-)
-
-paths = ["cat.jpg","dog.jpg"]
-for task in sequence(paths):
-    print(f"Results: {task['image_path']}")
-    print(task["detections"])
-    print()
-
-
+if __name__ == "__main__":
+    main()

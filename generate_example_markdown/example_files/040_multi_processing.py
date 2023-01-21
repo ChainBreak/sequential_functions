@@ -6,6 +6,22 @@ import sequential_functions as sf
 import time
 import os
 
+def main():
+    sequence = sf.Compose(
+        slow_task,
+        record_process_id,
+        num_processes=5, # Simply choose the number of processes
+    )
+
+    start_time = time.perf_counter()
+
+    for x in sequence(range(5)):
+        print(x)
+
+    end_time = time.perf_counter()
+
+    print(f"total time: {end_time-start_time}")
+
 def slow_task(x):
     time.sleep(1) # sleep 1 second
     return x
@@ -13,18 +29,5 @@ def slow_task(x):
 def record_process_id(x):
     return f"Task {x} completed by process {os.getpid()}"
 
-
-sequence = sf.Compose(
-    slow_task,
-    record_process_id,
-    num_processes=5, # Simply choose the number of processes
-)
-
-start_time = time.perf_counter()
-
-for x in sequence(range(5)):
-    print(x)
-
-end_time = time.perf_counter()
-
-print(f"total time: {end_time-start_time}")
+if __name__ == "__main__":
+    main()
