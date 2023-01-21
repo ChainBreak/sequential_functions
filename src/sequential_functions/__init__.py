@@ -1,1 +1,1 @@
-from .containers import Compose
+from .compose import Compose
