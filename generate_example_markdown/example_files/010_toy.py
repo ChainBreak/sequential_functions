@@ -1,16 +1,17 @@
 # Toy Example
-# This example is too simple for a real use case but it highlights the syntax.
+# Toy example that highlights the syntax.
 import sequential_functions as sf
 
 def main():
-    # Build a generator chain using Compose
+    # Compose an easy to read list of steps
     sequence = sf.Compose(
         square,
         plus_one,
     )
 
-    # Use list to pull items through the generator chain
+    # Use list to pull items through the sequence
     outputs = list(sequence(range(5)))
+
 
     print(outputs)
 

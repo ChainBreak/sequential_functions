@@ -6,37 +6,37 @@ import sequential_functions as sf
 
 def main():
     sequence = sf.Compose(
-        create_task_dict,
+        create_item_dict,
         load_image,
         preprocess_image,
         detect_objects,
     )
 
     paths = ["cat.jpg","dog.jpg"]
-    for task in sequence(paths):
-        print(f"Results: {task['image_path']}")
-        print(task["detections"])
+    for item in sequence(paths):
+        print(f"Results: {item['image_path']}")
+        print(item["detections"])
         print()
 
-def create_task_dict(path):
-    print(f"Tasking: {path}")
-    task = { "image_path": path}
-    return task
+def create_item_dict(path):
+    print(f"Item Dict: {path}")
+    item = { "image_path": path}
+    return item
 
-def load_image(task):
-    print(f"Loading: {task['image_path']}")
-    task["image"] = "e.g. numpy array"
-    return task
+def load_image(item):
+    print(f"Loading: {item['image_path']}")
+    item["image"] = "e.g. numpy array"
+    return item
 
-def preprocess_image(task):
-    print(f"Preprocessing: {task['image_path']}")
-    task["tensor"] = "e.g. torch tensor"
-    return task
+def preprocess_image(item):
+    print(f"Preprocessing: {item['image_path']}")
+    item["tensor"] = "e.g. torch tensor"
+    return item
 
-def detect_objects(task):
-    print(f"Detecting: {task['image_path']}")
-    task["detections"] = ["box 1", "box 2"]
-    return task
+def detect_objects(item):
+    print(f"Detecting: {item['image_path']}")
+    item["detections"] = ["box 1", "box 2"]
+    return item
 
 if __name__ == "__main__":
     main()

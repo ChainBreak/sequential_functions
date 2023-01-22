@@ -1,17 +1,18 @@
 ## Toy Example
-This example is too simple for a real use case but it highlights the syntax.
+Toy example that highlights the syntax.
 ```python
 import sequential_functions as sf
 
 def main():
-    # Build a generator chain using Compose
+    # Compose an easy to read list of steps
     sequence = sf.Compose(
         square,
         plus_one,
     )
 
-    # Use list to pull items through the generator chain
+    # Use list to pull items through the sequence
     outputs = list(sequence(range(5)))
+
 
     print(outputs)
 
@@ -73,51 +74,51 @@ import sequential_functions as sf
 
 def main():
     sequence = sf.Compose(
-        create_task_dict,
+        create_item_dict,
         load_image,
         preprocess_image,
         detect_objects,
     )
 
     paths = ["cat.jpg","dog.jpg"]
-    for task in sequence(paths):
-        print(f"Results: {task['image_path']}")
-        print(task["detections"])
+    for item in sequence(paths):
+        print(f"Results: {item['image_path']}")
+        print(item["detections"])
         print()
 
-def create_task_dict(path):
-    print(f"Tasking: {path}")
-    task = { "image_path": path}
-    return task
+def create_item_dict(path):
+    print(f"Item Dict: {path}")
+    item = { "image_path": path}
+    return item
 
-def load_image(task):
-    print(f"Loading: {task['image_path']}")
-    task["image"] = "e.g. numpy array"
-    return task
+def load_image(item):
+    print(f"Loading: {item['image_path']}")
+    item["image"] = "e.g. numpy array"
+    return item
 
-def preprocess_image(task):
-    print(f"Preprocessing: {task['image_path']}")
-    task["tensor"] = "e.g. torch tensor"
-    return task
+def preprocess_image(item):
+    print(f"Preprocessing: {item['image_path']}")
+    item["tensor"] = "e.g. torch tensor"
+    return item
 
-def detect_objects(task):
-    print(f"Detecting: {task['image_path']}")
-    task["detections"] = ["box 1", "box 2"]
-    return task
+def detect_objects(item):
+    print(f"Detecting: {item['image_path']}")
+    item["detections"] = ["box 1", "box 2"]
+    return item
 
 if __name__ == "__main__":
     main()
 ```
 Output
 ```shell
-Tasking: cat.jpg
+Item Dict: cat.jpg
 Loading: cat.jpg
 Preprocessing: cat.jpg
 Detecting: cat.jpg
 Results: cat.jpg
 ['box 1', 'box 2']
 
-Tasking: dog.jpg
+Item Dict: dog.jpg
 Loading: dog.jpg
 Preprocessing: dog.jpg
 Detecting: dog.jpg
@@ -162,12 +163,12 @@ if __name__ == "__main__":
 ```
 Output
 ```shell
-Task 0 completed by process 4540
-Task 1 completed by process 4541
-Task 2 completed by process 4542
-Task 3 completed by process 4543
-Task 4 completed by process 4544
-total time: 1.0113599770702422
+Task 0 completed by process 6653
+Task 1 completed by process 6654
+Task 2 completed by process 6655
+Task 3 completed by process 6656
+Task 4 completed by process 6657
+total time: 1.0106039160164073
 ```
 ## Multi Threading
 It's trivial to distribute work to multiple threads by providing the num_threads argument.
@@ -212,7 +213,7 @@ Task 1 completed by thread ThreadPoolExecutor-0_1
 Task 2 completed by thread ThreadPoolExecutor-0_2
 Task 3 completed by thread ThreadPoolExecutor-0_3
 Task 4 completed by thread ThreadPoolExecutor-0_4
-total time: 1.0029224080499262
+total time: 1.0028418829897419
 ```
 ## Nesting
 Compose returns a callable that can be nesting inside another Compose.
@@ -264,9 +265,9 @@ function_a(2) ran in main thread
 function_b(0) ran in thread ThreadPoolExecutor-0_0
 function_b(1) ran in thread ThreadPoolExecutor-0_1
 function_b(2) ran in thread ThreadPoolExecutor-0_2
-function_c(0) ran in process 4557
-function_c(1) ran in process 4558
-function_c(2) ran in process 4559
+function_c(0) ran in process 6679
+function_c(1) ran in process 6680
+function_c(2) ran in process 6681
 ```
 ## Callables
 Functions can be any type of callable.
@@ -313,4 +314,40 @@ Output
 ..**2 Hello World!**..
 ..**3 Hello World!**..
 ..**4 Hello World!**..
+```
+## Item Growth
+Functions can yield out more items than they take in.
+```python
+import sequential_functions as sf
+
+def main():
+    sequence = sf.Compose(
+        yield_video_frames,
+        detect_objects,
+    )
+    for x in sequence(range(3)):
+        print(x)
+
+def yield_video_frames(x):
+    num_frames = 3
+    for i in range(num_frames):
+        yield f"Video {x}, Frame {i}"
+
+def detect_objects(x):
+    return f" Detecting objects in {x}"
+
+if __name__ == "__main__":
+    main()
+```
+Output
+```shell
+ Detecting objects in Video 0, Frame 0
+ Detecting objects in Video 0, Frame 1
+ Detecting objects in Video 0, Frame 2
+ Detecting objects in Video 1, Frame 0
+ Detecting objects in Video 1, Frame 1
+ Detecting objects in Video 1, Frame 2
+ Detecting objects in Video 2, Frame 0
+ Detecting objects in Video 2, Frame 1
+ Detecting objects in Video 2, Frame 2
 ```
