@@ -48,7 +48,7 @@ def main():
     generator_chain = (square(x) for x in generator_chain)
     generator_chain = (plus_one(x) for x in generator_chain)
     output = list(generator_chain)
-    print(outputs,"Method 1 - Generator Chain")
+    print(outputs,"Method 2 - Generator Chain")
 
 def square(x):
     return x*x
@@ -62,7 +62,7 @@ if __name__ == "__main__":
 Output
 ```shell
 [1, 2, 5, 10, 17] Method 1 - Composed Sequence
-[1, 2, 5, 10, 17] Method 1 - Generator Chain
+[1, 2, 5, 10, 17] Method 2 - Generator Chain
 ```
 ## Best Practice
 It's best practice to pass a dict in and out of each function.
@@ -162,12 +162,12 @@ if __name__ == "__main__":
 ```
 Output
 ```shell
-Task 0 completed by process 6886
-Task 1 completed by process 6887
-Task 2 completed by process 6888
-Task 3 completed by process 6889
-Task 4 completed by process 6890
-total time: 1.0111455039586872
+Task 0 completed by process 7199
+Task 1 completed by process 7200
+Task 2 completed by process 7201
+Task 3 completed by process 7202
+Task 4 completed by process 7203
+total time: 1.0112770000705495
 ```
 ## Multi Threading
 It's trivial to distribute work to multiple threads by providing the num_threads argument.
@@ -212,7 +212,7 @@ Task 1 completed by thread ThreadPoolExecutor-0_1
 Task 2 completed by thread ThreadPoolExecutor-0_2
 Task 3 completed by thread ThreadPoolExecutor-0_3
 Task 4 completed by thread ThreadPoolExecutor-0_4
-total time: 1.002675917930901
+total time: 1.0028166190022603
 ```
 ## Nesting
 Compose returns a callable that can be nesting inside another Compose.
@@ -264,9 +264,9 @@ function_a(2) ran in main thread
 function_b(0) ran in thread ThreadPoolExecutor-0_0
 function_b(2) ran in thread ThreadPoolExecutor-0_2
 function_b(1) ran in thread ThreadPoolExecutor-0_1
-function_c(1) ran in process 6912
-function_c(0) ran in process 6911
-function_c(2) ran in process 6913
+function_c(0) ran in process 7219
+function_c(1) ran in process 7220
+function_c(2) ran in process 7221
 ```
 ## Callables
 Functions can be any type of callable.

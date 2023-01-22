@@ -56,7 +56,7 @@ def main():
     generator_chain = (square(x) for x in generator_chain)
     generator_chain = (plus_one(x) for x in generator_chain)
     output = list(generator_chain)
-    print(outputs,"Method 1 - Generator Chain")
+    print(outputs,"Method 2 - Generator Chain")
 
 def square(x):
     return x*x
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 Output
 ```shell
 [1, 2, 5, 10, 17] Method 1 - Composed Sequence
-[1, 2, 5, 10, 17] Method 1 - Generator Chain
+[1, 2, 5, 10, 17] Method 2 - Generator Chain
 ```
 ## Best Practice
 It's best practice to pass a dict in and out of each function.

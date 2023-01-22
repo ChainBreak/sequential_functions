@@ -17,7 +17,7 @@ def main():
     generator_chain = (square(x) for x in generator_chain)
     generator_chain = (plus_one(x) for x in generator_chain)
     output = list(generator_chain)
-    print(outputs,"Method 1 - Generator Chain")
+    print(outputs,"Method 2 - Generator Chain")
 
 def square(x):
     return x*x
