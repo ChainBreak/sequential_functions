@@ -12,7 +12,6 @@ def main():
     # Use list to pull items through the sequence
     outputs = list(sequence(range(5)))
 
-
     print(outputs)
 
 def square(x):
