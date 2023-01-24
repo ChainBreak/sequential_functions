@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sequential_functions"
-version = "0.0.2"
+version = "0.0.4"
 authors = [
   { name="Thomas Rowntree" },
 ]
-description = "Compose functions and sequentially call them. Also allow mutiprocessing!"
+description = "Compose functions and sequentially call them. Run sequence in multiple threads or processes!"
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [

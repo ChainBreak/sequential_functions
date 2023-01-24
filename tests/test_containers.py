@@ -119,6 +119,36 @@ def test_work_is_actually_done_different_threads(num_threads):
     assert len(pid_set) == num_threads
 
 
+@pytest.mark.parametrize("num_processes, num_threads",[
+    (0,0),
+    (3,0),
+    (20,0),
+    (0,3),
+    (0,20),
+])
+def test_that_all_item_are_not_immediately_consumed(num_processes, num_threads):
+
+    counts = {"in":0,"out":0}
+
+    def generator():
+        for x in range(1000):
+            counts["in"] += 1
+            # print("in",x)
+            yield x
+
+    f = Compose(
+        double,
+        num_processes=num_processes,
+        num_threads=num_threads,
+    )
+
+    for x in f( generator()):
+        counts["out"] += 1
+        # print("out",x)
+
+        num_workers = max(num_processes,num_threads)
+        assert counts["in"] <= counts["out"] + num_workers
+
 def yield_twice(x):
     yield x
     yield x
@@ -128,6 +158,9 @@ def double(x):
 
 def sub_1(x):
     return x - 1
+
+def slow(x):
+    time.sleep(0.0001)
 
 def throw_exception(x):
     raise FakeException()
