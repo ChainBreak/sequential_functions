@@ -35,27 +35,28 @@ class Compose():
                 for item in collated_items:
                     yield item
 
-    def map_with_pool_executor(self, pool_excecutor, function,  generator):
+    def map_with_pool_executor(self, pool, function,  generator):
         
-        # generator that submits work to the pool excecutor and yields futures
-        future_generator = ( pool_excecutor.submit(function, item) for item in generator )
+        # generator that submits work to the pool and yields futures
+        future_generator = ( pool.submit(function, item) for item in generator )
 
         # Submit enough work to fill all workers
-        pending_futures = itertools.islice(future_generator, pool_excecutor._max_workers)
+        pending_futures = itertools.islice(future_generator, pool._max_workers)
 
         # Queue up the pending work
         pending_futures = collections.deque(pending_futures)
 
         while pending_futures:
+            # Get the oldes future from the queue
             future = pending_futures.popleft()
 
             yield future.result()
 
             # Submit more work and add the future to the queue
-            # Using for as an easy way to pull the next item
-            for future in future_generator:
-                pending_futures.append(future)
-                break
+            try:
+                pending_futures.append(next(future_generator))
+            except StopIteration:
+                pass
 
 
     def worker_function(self,item):
