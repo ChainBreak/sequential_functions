@@ -162,12 +162,12 @@ if __name__ == "__main__":
 ```
 Output
 ```shell
-Task 0 completed by process 7199
-Task 1 completed by process 7200
-Task 2 completed by process 7201
-Task 3 completed by process 7202
-Task 4 completed by process 7203
-total time: 1.0112770000705495
+Task 0 completed by process 19228
+Task 1 completed by process 19229
+Task 2 completed by process 19230
+Task 3 completed by process 19231
+Task 4 completed by process 19232
+total time: 1.0112877849987854
 ```
 ## Multi Threading
 It's trivial to distribute work to multiple threads by providing the num_threads argument.
@@ -212,7 +212,7 @@ Task 1 completed by thread ThreadPoolExecutor-0_1
 Task 2 completed by thread ThreadPoolExecutor-0_2
 Task 3 completed by thread ThreadPoolExecutor-0_3
 Task 4 completed by thread ThreadPoolExecutor-0_4
-total time: 1.0028166190022603
+total time: 1.0028790479991585
 ```
 ## Nesting
 Compose returns a callable that can be nesting inside another Compose.
@@ -237,7 +237,8 @@ def main():
             num_processes=3,
         ),
     )
-    list(sequence(range(3)))
+    outputs=list(sequence(range(3)))
+    print(outputs)
 
 def function_a(x):
     print(f"function_a({x}) ran in main thread")
@@ -262,11 +263,12 @@ function_a(0) ran in main thread
 function_a(1) ran in main thread
 function_a(2) ran in main thread
 function_b(0) ran in thread ThreadPoolExecutor-0_0
-function_b(2) ran in thread ThreadPoolExecutor-0_2
 function_b(1) ran in thread ThreadPoolExecutor-0_1
-function_c(0) ran in process 7219
-function_c(1) ran in process 7220
-function_c(2) ran in process 7221
+function_b(2) ran in thread ThreadPoolExecutor-0_2
+function_c(0) ran in process 19245
+function_c(1) ran in process 19246
+function_c(2) ran in process 19247
+[0, 1, 2]
 ```
 ## Callables
 Functions can be any type of callable.

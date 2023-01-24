@@ -58,7 +58,6 @@ class Compose():
             except StopIteration:
                 pass
 
-
     def worker_function(self,item):
 
         output_generator = self.build_generator_chain( [item] )

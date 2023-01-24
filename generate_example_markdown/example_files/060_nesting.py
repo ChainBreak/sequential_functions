@@ -20,7 +20,8 @@ def main():
             num_processes=3,
         ),
     )
-    list(sequence(range(3)))
+    outputs=list(sequence(range(3)))
+    print(outputs)
 
 def function_a(x):
     print(f"function_a({x}) ran in main thread")
