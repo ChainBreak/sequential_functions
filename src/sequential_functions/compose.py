@@ -2,6 +2,7 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 import collections
 import types
 import itertools
+import signal
 
 class Compose():
     def __init__(self, *functions, num_processes=0, num_threads=0):
@@ -21,11 +22,14 @@ class Compose():
 
     def build_generator_chain_with_multi_processing(self,generator):
 
-        with ProcessPoolExecutor(max_workers=self.num_processes) as pool:
+        with ProcessPoolExecutor(max_workers=self.num_processes, initializer=self.init_process_worker) as pool:
             for collated_items in self.map_with_pool_executor(pool, self.worker_function, generator):
 
                 for item in collated_items:
                     yield item
+
+    def init_process_worker(self):
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
     
     def build_generator_chain_with_multi_threading(self,generator):
 
