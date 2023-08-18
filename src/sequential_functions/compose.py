@@ -3,71 +3,106 @@ import collections
 import types
 import itertools
 import signal
+from multiprocessing import  Queue
+import queue
+from threading import Thread
 
 class Compose():
+    # Class used to mark when the last item his entered the queue
+    class EndToken: pass
+
     def __init__(self, *functions, num_processes=0, num_threads=0):
         self.function_list = functions
         self.num_processes = num_processes
         self.num_threads = num_threads
+        self.queue_timeout=2.0
 
     def __call__(self, input_generator):
 
         if self.num_processes > 0:
-            output_generator = self.build_generator_chain_with_multi_processing(input_generator)
+            with ProcessPoolExecutor(max_workers=self.num_processes, initializer=self.ignore_keyboard_interrupt_in_process_worker) as process_pool:
+                yield from self.run_generator_through_pool_of_workers(input_generator, process_pool, self.num_processes )
+
         elif self.num_threads > 0:
-            output_generator = self.build_generator_chain_with_multi_threading(input_generator)
+            with ThreadPoolExecutor(max_workers=self.num_threads) as thread_pool:
+                yield from self.run_generator_through_pool_of_workers(input_generator, thread_pool, self.num_threads )
+
         else:
-            output_generator = self.build_generator_chain(input_generator)
-        return output_generator
+            yield from self.build_generator_chain(input_generator)
 
-    def build_generator_chain_with_multi_processing(self,generator):
 
-        with ProcessPoolExecutor(max_workers=self.num_processes, initializer=self.init_process_worker) as pool:
-            for collated_items in self.map_with_pool_executor(pool, self.worker_function, generator):
-
-                for item in collated_items:
-                    yield item
-
-    def init_process_worker(self):
+    def ignore_keyboard_interrupt_in_process_worker(self):
+        # Make workers ingnore keyboard interrupts to prevent zombie processes.
         signal.signal(signal.SIGINT, signal.SIG_IGN)
     
-    def build_generator_chain_with_multi_threading(self,generator):
+    def run_generator_through_pool_of_workers(self, input_generator, pool, num_workers):
 
-        with ThreadPoolExecutor(max_workers=self.num_threads) as pool:
-            for collated_items in self.map_with_pool_executor(pool, self.worker_function, generator):
+        # Use queues to allows workers to pull items from the generator before them 
+        input_queue = Queue(maxsize=1)
+        output_queue = Queue(maxsize=1)
 
-                for item in collated_items:
-                    yield item
 
-    def map_with_pool_executor(self, pool, function,  generator):
+        # Start all the workers and give them the input and output queues
+        future_list = []
+        for i in range(num_workers):
+            print(f"submit worker {i}")
+            future = pool.submit(self.worker_function, input_queue, output_queue) 
+            future_list.append(future)
+
+        self.pump_generator_into_queue_using_background_thread(input_generator, input_queue)
+
         
-        # generator that submits work to the pool and yields futures
-        future_generator = ( pool.submit(function, item) for item in generator )
+        yield from self.yield_items_from_output_queue_until_all_workers_have_stopped(output_queue, future_list)
+        print("Finished yield results")
+      
+        input_queue.close()
+        output_queue.close()
 
-        # Submit enough work to fill all workers
-        pending_futures = itertools.islice(future_generator, pool._max_workers)
+    def pump_generator_into_queue_using_background_thread(self, input_generator, input_queue ):
+        def run():
+            # Pull items from the generator and put then in the input queue
+            for item in input_generator:
+                print("into queue",item)
+                input_queue.put(item)
 
-        # Queue up the pending work
-        pending_futures = collections.deque(pending_futures)
+            # All done, send an end token to the workers
+            input_queue.put(self.EndToken())
+ 
+            return
 
-        while pending_futures:
-            # Get the oldes future from the queue
-            future = pending_futures.popleft()
+        thread = Thread(target=run)
+        thread.start()
 
-            yield future.result()
+    def worker_function(self,input_queue, output_queue):
+        print("worker function called")
+        input_generator = self.wrap_queue_as_generator(input_queue)
+        
+        output_generator = self.build_generator_chain( input_generator )
+        
+        for item in output_generator:
+            output_queue.put(item)
 
-            # Submit more work and add the future to the queue
+    def wrap_queue_as_generator(self,input_queue):
+        while True:
+            print("worker getting item from queue")
+            item = input_queue.get()
+            print("item")
+            if isinstance(item, Compose.EndToken):
+                # Resend the end token to tell other processes
+                input_queue.put(item)
+
+                # Return ends the generator
+                return
+            else:
+                yield item
+
+    def yield_items_from_output_queue_until_all_workers_have_stopped(self,output_queue, future_list):
+        while True:
             try:
-                pending_futures.append(next(future_generator))
-            except StopIteration:
-                pass
-
-    def worker_function(self,item):
-
-        output_generator = self.build_generator_chain( [item] )
-
-        # Use list to collate items incase there are more outputs than inputs
-        return list(output_generator)
+                yield output_queue.get(timeout=self.queue_timeout)
+            except queue.Empty:
+                if not any((future.running() for future in future_list)):
+                    return
 
     def build_generator_chain(self, generator):
 
@@ -85,7 +120,7 @@ class Compose():
 
             result_item = function(item)
 
-            # Functions can return item or  yield items as a generator
+            # Functions can return a signle item or yield items as a generator
             if isinstance(result_item, types.GeneratorType):
                 yield from result_item
             else:
