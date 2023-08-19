@@ -18,21 +18,19 @@ class Compose():
         self.queue_timeout=0.1
 
     def __call__(self, input_generator):
-        print(self.num_threads, self.num_processes)
-
+        
         if self.num_processes > 0:
-            print("Start Process Pool")
-            with ProcessPoolExecutor(max_workers=self.num_processes) as process_pool:
+            
+            with ProcessPoolExecutor(max_workers=self.num_processes, initializer=self.ignore_keyboard_interrupt_in_process_worker) as process_pool:
                 yield from self.run_generator_through_pool_of_workers(input_generator, process_pool, self.num_processes )
 
         elif self.num_threads > 0:
-            print("Start Thread Pool")
+            
             with ThreadPoolExecutor(max_workers=self.num_threads) as thread_pool:
                 yield from self.run_generator_through_pool_of_workers(input_generator, thread_pool, self.num_threads )
 
         else:
             yield from self.build_generator_chain(input_generator)
-
 
     def ignore_keyboard_interrupt_in_process_worker(self):
         # Make workers ingnore keyboard interrupts to prevent zombie processes.
@@ -41,42 +39,45 @@ class Compose():
     def run_generator_through_pool_of_workers(self, input_generator, pool, num_workers):
 
         manager = multiprocessing.Manager()
+
         # Use queues to allows workers to pull items from the generator before them 
         input_queue = manager.Queue(maxsize=1)
         output_queue = manager.Queue(maxsize=1)
 
-        print(pool)
-
         # Start all the workers and give them the input and output queues
-        future_list = []
+        worker_list = []
         for i in range(num_workers):
-            print(f"submit worker {i}")
-            future = pool.submit(self.worker_function, input_queue, output_queue) 
-            future_list.append(future)
+            worker = pool.submit(self.worker_function, input_queue, output_queue) 
+            worker_list.append(worker)
 
         self.pump_generator_into_queue_using_background_thread(input_generator, input_queue)
 
+        yield from self.yield_items_from_output_queue_until_all_workers_have_stopped(output_queue, worker_list)
         
-        yield from self.yield_items_from_output_queue_until_all_workers_have_stopped(output_queue, future_list)
-        print("Finished yield results")
-      
+        self.discard_all_items_from_queue(input_queue)
+        
+        # Raise any exceptions found in workers
+        for worker in worker_list:
+            exception = worker.exception()
+            if exception is not None:
+                raise exception
+           
+                  
     def pump_generator_into_queue_using_background_thread(self, input_generator, input_queue ):
         def run():
             # Pull items from the generator and put then in the input queue
             for item in input_generator:
-                print("into queue",item)
+                
                 input_queue.put(item)
 
-            print("Sending end token")
             # All done, send an end token to the workers
             input_queue.put(self.EndToken())
  
-
         thread = Thread(target=run)
         thread.start()
 
     def worker_function(self,input_queue, output_queue):
-        print("worker function called")
+        
         input_generator = self.wrap_queue_as_generator(input_queue)
         
         output_generator = self.build_generator_chain( input_generator )
@@ -86,9 +87,9 @@ class Compose():
 
     def wrap_queue_as_generator(self,input_queue):
         while True:
-            print("worker getting item from queue")
+            
             item = input_queue.get()
-            print("item")
+            
             if isinstance(item, Compose.EndToken):
                 # Resend the end token to tell other processes
                 input_queue.put(item)
@@ -98,15 +99,14 @@ class Compose():
             else:
                 yield item
 
-    def yield_items_from_output_queue_until_all_workers_have_stopped(self,output_queue, future_list):
-        print("yield_items_from_output_queue_until_all_workers_have_stopped")
+    def yield_items_from_output_queue_until_all_workers_have_stopped(self,output_queue, worker_list):
+        
         while True:
             try:
-                print("trying to get item")
                 yield output_queue.get(timeout=self.queue_timeout)
+
             except queue.Empty:
-                print("output queue empty")
-                if not any((future.running() for future in future_list)):
+                if not any((worker.running() for worker in worker_list)):
                     return
 
     def build_generator_chain(self, generator):
@@ -131,4 +131,9 @@ class Compose():
             else:
                 yield result_item
    
-      
+    def discard_all_items_from_queue(self,queue_to_clean):
+        while True:
+            try:
+                item = queue_to_clean.get(timeout=self.queue_timeout)
+            except queue.Empty:
+                return
