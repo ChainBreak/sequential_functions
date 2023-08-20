@@ -1,6 +1,6 @@
 # Sequential Functions
 Compose functions into a sequence that are called sequentially.  
-This project is designed for fast readable code.  
+Build fast readable code.  
 Break your problem into small functional steps and let sequential functions run them sequentially.   
 Want to go faster? Simply increase the number of threads or processes.
 
@@ -135,7 +135,7 @@ Results: dog.jpg
 ```
 ## Multi Processing
 It's trivial to distribute work to multiple processes by providing the num_processes argument.
-Work is still completed in order.
+Order is not preserved with multiprocessing.
 Use multiprocessing when computation is the bottle neck.
 ```python
 import sequential_functions as sf
@@ -170,16 +170,16 @@ if __name__ == "__main__":
 ```
 Output
 ```shell
-Task 0 completed by process 19228
-Task 1 completed by process 19229
-Task 2 completed by process 19230
-Task 3 completed by process 19231
-Task 4 completed by process 19232
-total time: 1.0112877849987854
+Task 1 completed by process 1253843
+Task 0 completed by process 1253837
+Task 2 completed by process 1253838
+Task 3 completed by process 1253846
+Task 4 completed by process 1253840
+total time: 1.241348128998652
 ```
 ## Multi Threading
 It's trivial to distribute work to multiple threads by providing the num_threads argument.
-Work is still completed in order.
+Order is not preserved with multithreading.
 Use threading when IO is the bottle neck. e.g loading urls.
 ```python
 import sequential_functions as sf
@@ -215,12 +215,12 @@ if __name__ == "__main__":
 ```
 Output
 ```shell
-Task 0 completed by thread ThreadPoolExecutor-0_0
-Task 1 completed by thread ThreadPoolExecutor-0_1
-Task 2 completed by thread ThreadPoolExecutor-0_2
-Task 3 completed by thread ThreadPoolExecutor-0_3
-Task 4 completed by thread ThreadPoolExecutor-0_4
-total time: 1.0028790479991585
+Task 0 completed by thread ThreadPoolExecutor-0_2
+Task 1 completed by thread ThreadPoolExecutor-0_3
+Task 4 completed by thread ThreadPoolExecutor-0_1
+Task 2 completed by thread ThreadPoolExecutor-0_0
+Task 3 completed by thread ThreadPoolExecutor-0_4
+total time: 1.2234888289822266
 ```
 ## Nesting
 Compose returns a callable that can be nesting inside another Compose.
@@ -267,16 +267,77 @@ if __name__ == "__main__":
 ```
 Output
 ```shell
+function_c(0) ran in process 1253950
+function_c(1) ran in process 1253958
+function_c(2) ran in process 1253948
 function_a(0) ran in main thread
 function_a(1) ran in main thread
 function_a(2) ran in main thread
-function_b(0) ran in thread ThreadPoolExecutor-0_0
-function_b(1) ran in thread ThreadPoolExecutor-0_1
-function_b(2) ran in thread ThreadPoolExecutor-0_2
-function_c(0) ran in process 19245
-function_c(1) ran in process 19246
-function_c(2) ran in process 19247
+function_b(0) ran in thread ThreadPoolExecutor-0_1
+function_b(2) ran in thread ThreadPoolExecutor-0_0
+function_b(1) ran in thread ThreadPoolExecutor-0_2
 [0, 1, 2]
+```
+## Batching
+Use batching to collate multiple items into a batch.
+A machine learning model may more efficient on batches.
+```python
+import sequential_functions as sf
+import time
+def main():
+    sequence = sf.Compose(
+        # Build the batches in background processes.
+        sf.Compose(
+            load_image,
+            sf.Batch(batch_size=3),
+            collate_images,
+            num_processes=3, 
+        ),
+        # Detect in the main process.
+        detect_objects,
+        debatch_detections,
+    )
+
+    image_paths = (f"image_{i}.jpg" for i in range(10))
+
+    results = list(sequence(image_paths))
+    for result in results:
+        print(result)
+
+def load_image(path):
+    return path.replace("image","tensor").replace(".jpg","")
+
+def collate_images(x_list):
+    # Ideally you would stack images into a tensor
+    return ",".join(x_list)
+
+def detect_objects(x_batch):
+    print(f"Detecting on Batch: {x_batch}")
+    # Ideally your detection runs faster with a batch of images.
+    return x_batch.replace("tensor","Detections tensor")
+
+def debatch_detections(x_batch):
+    yield from x_batch.split(",")
+
+if __name__ == "__main__":
+    main()
+```
+Output
+```shell
+Detecting on Batch: tensor_3,tensor_4,tensor_5
+Detecting on Batch: tensor_0,tensor_1,tensor_2
+Detecting on Batch: tensor_6,tensor_7,tensor_9
+Detecting on Batch: tensor_8
+Detections tensor_3
+Detections tensor_4
+Detections tensor_5
+Detections tensor_0
+Detections tensor_1
+Detections tensor_2
+Detections tensor_6
+Detections tensor_7
+Detections tensor_9
+Detections tensor_8
 ```
 ## Callables
 Functions can be any type of callable.
