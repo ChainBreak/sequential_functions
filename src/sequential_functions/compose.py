@@ -38,31 +38,36 @@ class Compose():
     
     def run_generator_through_pool_of_workers(self, input_generator, pool, num_workers):
 
+        # Generators can't be shared to multiple processes so instead we use queue's. 
+        # generator -> queue -> [p1,p2,..,pn] -> queue -> generator
+
+        # Use a manager to all queue to be passed to background processes
         manager = multiprocessing.Manager()
 
         # Use queues to allows workers to pull items from the generator before them 
         input_queue = manager.Queue(maxsize=1)
         output_queue = manager.Queue(maxsize=1)
 
+        # Read items from generator in put them in queue
+        self.pump_generator_into_queue_using_background_thread(input_generator, input_queue)
+
         # Start all the workers and give them the input and output queues
+        # Workers read from the input queue and write to the output queue
         worker_list = []
         for i in range(num_workers):
             worker = pool.submit(self.worker_function, input_queue, output_queue) 
             worker_list.append(worker)
 
-        self.pump_generator_into_queue_using_background_thread(input_generator, input_queue)
-
+        # Yield items from the output queue as a generator
         yield from self.yield_items_from_output_queue_until_all_workers_have_stopped(output_queue, worker_list)
         
+        # Empty the input_queue to allow the processes to stop properly.
+        # Processes hang when a queue is not empty
         self.discard_all_items_from_queue(input_queue)
         
-        # Raise any exceptions found in workers
-        for worker in worker_list:
-            exception = worker.exception()
-            if exception is not None:
-                raise exception
-           
-                  
+        # Raise any exceptions that were found in the workers.
+        self.raise_any_worker_exception(worker_list)
+        
     def pump_generator_into_queue_using_background_thread(self, input_generator, input_queue ):
         def run():
             # Pull items from the generator and put then in the input queue
@@ -137,3 +142,10 @@ class Compose():
                 item = queue_to_clean.get(timeout=self.queue_timeout)
             except queue.Empty:
                 return
+            
+    def raise_any_worker_exception(self, worker_list):
+        # Raise any exceptions found in workers
+        for worker in worker_list:
+            exception = worker.exception()
+            if exception is not None:
+                raise exception
