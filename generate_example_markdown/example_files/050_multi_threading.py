@@ -1,6 +1,6 @@
 # Multi Threading
 # It's trivial to distribute work to multiple threads by providing the num_threads argument.
-# Work is still completed in order.
+# Order is not preserved with multithreading.
 # Use threading when IO is the bottle neck. e.g loading urls.
 import sequential_functions as sf
 import time

@@ -1,6 +1,6 @@
 # Multi Processing
 # It's trivial to distribute work to multiple processes by providing the num_processes argument.
-# Work is still completed in order.
+# Order is not preserved with multiprocessing.
 # Use multiprocessing when computation is the bottle neck.
 import sequential_functions as sf
 import time
