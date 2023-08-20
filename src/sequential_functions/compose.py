@@ -1,13 +1,11 @@
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
-import collections
 import types
-import itertools
 import signal
 import multiprocessing
 import queue
 from threading import Thread
-
-class Compose():
+from.callable import Callable
+class Compose(Callable):
     # Class used to mark when the last item his entered the queue
     class EndToken: pass
 
@@ -117,7 +115,7 @@ class Compose():
     def build_generator_chain(self, generator):
 
         for function in self.function_list:
-            if isinstance(function, Compose):
+            if isinstance(function, Callable):
                 generator = function(generator)
             else:
                 generator = self.wrap_function_in_generator(function,generator)
