@@ -1,5 +1,5 @@
 import pytest
-from sequential_functions import Compose
+from sequential_functions import Compose, Batch, DeBatch
 import os
 import threading
 import time
@@ -149,6 +149,61 @@ def test_that_all_item_are_not_immediately_consumed(num_processes, num_threads):
         num_workers = max(num_processes,num_threads)
         assert counts["in"] <= counts["out"] + num_workers + 2
 
+@pytest.mark.parametrize("num_processes, num_threads",[
+    (0,0),
+    (3,0),
+    (20,0),
+    (0,3),
+    (0,20),
+])
+def test_batching(num_processes, num_threads):
+
+    f = Compose(
+        Batch(batch_size=3),
+        assert_item_is_list_of_items,
+        DeBatch(),
+        num_processes=num_processes,
+        num_threads=num_threads,
+    )
+
+    n = 10
+
+    x = list(f(range(n)))
+    y = list(range(n))
+    assert set(x)==set(y)
+
+@pytest.mark.parametrize("num_processes, num_threads",[
+    (0,0),
+    (3,0),
+    (20,0),
+    (0,3),
+    (0,20),
+])
+def test_nested_multiprocessing(num_processes, num_threads):
+
+    f = Compose(
+        Compose(
+            double,
+            num_processes=num_processes,
+            num_threads=num_threads,
+        ),
+        Compose(
+            Batch(batch_size=3),
+            num_processes=num_processes,
+            num_threads=num_threads,
+        ),
+        DeBatch(),
+        num_processes=num_processes,
+        num_threads=num_threads,
+    )
+    
+
+    n = 100
+
+    x = list(f(range(n)))
+    y = [ double(x) for x in range(n)]
+    assert set(x)==set(y)
+
 def yield_twice(x):
     yield x
     yield x
@@ -174,5 +229,7 @@ def get_thread_name(x):
     time.sleep(0.0001)
     return threading.current_thread().name
 
-    
+def assert_item_is_list_of_items(x):
+    assert type(x) is list
+    return x    
 class FakeException(Exception): pass
