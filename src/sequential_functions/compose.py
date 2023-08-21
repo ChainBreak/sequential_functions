@@ -128,8 +128,11 @@ class Compose(Callable):
 
             result_item = function(item)
 
-            # Functions can return a signle item or yield items as a generator
-            if isinstance(result_item, types.GeneratorType):
+            # Functions can return None, a signle item or a generator that yields items
+            if result_item is None:
+                # Skip this item and continue with  the next one
+                continue
+            elif isinstance(result_item, types.GeneratorType):
                 yield from result_item
             else:
                 yield result_item

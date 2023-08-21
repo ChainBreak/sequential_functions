@@ -34,6 +34,25 @@ def test_compose(num_processes, num_threads):
     (0,3),
     (0,20),
 ])
+def test_item_skips_when_none_returned(num_processes, num_threads):
+
+    f = Compose(
+        skip_even_numbers,
+        num_processes=num_processes,
+        num_threads=num_threads,
+    )
+
+    x = list(f([1,2,3,4,5,6,7,8,9,10]))
+    y = [1,3,5,7,9]
+    assert set(x)==set(y)
+
+@pytest.mark.parametrize("num_processes, num_threads",[
+    (0,0),
+    (3,0),
+    (20,0),
+    (0,3),
+    (0,20),
+])
 def test_nested_compose(num_processes, num_threads):
 
     f = Compose(
@@ -210,6 +229,11 @@ def yield_twice(x):
 
 def double(x):
     return 2 * x
+
+def skip_even_numbers(x):
+    if x%2==0:
+        return None
+    return x
 
 def sub_1(x):
     return x - 1
