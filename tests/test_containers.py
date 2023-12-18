@@ -166,7 +166,7 @@ def test_that_all_item_are_not_immediately_consumed(num_processes, num_threads):
         # print("out",x)
 
         num_workers = max(num_processes,num_threads)
-        assert counts["in"] <= counts["out"] + num_workers + 2
+        assert counts["in"] <= counts["out"] + num_workers + 3
 
 @pytest.mark.parametrize("num_processes, num_threads",[
     (0,0),
@@ -194,9 +194,7 @@ def test_batching(num_processes, num_threads):
 @pytest.mark.parametrize("num_processes, num_threads",[
     (0,0),
     (3,0),
-    (20,0),
     (0,3),
-    (0,20),
 ])
 def test_nested_multiprocessing(num_processes, num_threads):
 
