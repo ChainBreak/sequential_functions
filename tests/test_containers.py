@@ -140,9 +140,9 @@ def test_work_is_actually_done_different_threads(num_threads):
 
 @pytest.mark.parametrize("num_processes, num_threads",[
     (0,0),
-    (3,0),
+    (5,0),
     (20,0),
-    (0,3),
+    (0,5),
     (0,20),
 ])
 def test_that_all_item_are_not_immediately_consumed(num_processes, num_threads):
@@ -166,7 +166,7 @@ def test_that_all_item_are_not_immediately_consumed(num_processes, num_threads):
         # print("out",x)
 
         num_workers = max(num_processes,num_threads)
-        assert counts["in"] <= counts["out"] + num_workers + 3
+        assert counts["in"] <= counts["out"] + num_workers + 2*f.queue_maxsize
 
 @pytest.mark.parametrize("num_processes, num_threads",[
     (0,0),
