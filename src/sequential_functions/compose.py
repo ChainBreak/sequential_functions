@@ -14,6 +14,7 @@ class Compose(Callable):
         self.num_processes = num_processes
         self.num_threads = num_threads
         self.queue_timeout=0.1
+        self.queue_maxsize = 2
 
     def __call__(self, input_generator):
         
@@ -35,31 +36,34 @@ class Compose(Callable):
         # Generators can't be shared to multiple processes so instead we use queue's. 
         # generator -> queue -> [p1,p2,..,pn] -> queue -> generator
 
-        # Use a manager to all queue to be passed to background processes
+        # Use a manager to create all queue to be passed to background processes
         manager = multiprocessing.Manager()
 
         # Use queues to allows workers to pull items from the generator before them 
-        input_queue = manager.Queue(maxsize=2)
-        output_queue = manager.Queue(maxsize=2)
+        input_queue = manager.Queue(maxsize=self.queue_maxsize)
+        output_queue = manager.Queue(maxsize=self.queue_maxsize)
+
+        # Use an event to indiciate if the we're still running.
+        # Used to exit loops e.g. while running_flag.is_set(): # do stuff
         running_flag = manager.Event()
         running_flag.set()
 
-        input_queue = QueueTimeoutRetryWrapper(input_queue, running_flag)
-        retry_output_queue = QueueTimeoutRetryWrapper(output_queue, running_flag)
+        input_queue = QueueTimeoutRetryWrapper(input_queue, self.queue_timeout, running_flag)
+        retry_output_queue = QueueTimeoutRetryWrapper(output_queue, self.queue_timeout, running_flag)
 
         try: 
             # Start all the workers and give them the input and output queues
             # Workers read from the input queue and write to the output queue
             worker_list = []
             for i in range(num_workers):
-                worker = pool.submit(self.worker_function, input_queue, retry_output_queue) 
+                worker = pool.submit(self.worker_function, input_queue, retry_output_queue, running_flag) 
                 worker_list.append(worker)
 
             # Read items from generator and put them in queue
-            self.pump_generator_into_queue_using_background_thread(input_generator, input_queue)
+            self.pump_generator_into_queue_using_background_thread(input_generator, input_queue, running_flag)
 
             # Yield items from the output queue as a generator
-            yield from self.yield_items_from_output_queue_until_all_workers_have_stopped(output_queue, worker_list)
+            yield from self.yield_items_from_output_queue_until_all_workers_have_stopped(output_queue, worker_list, running_flag)
             
             # Raise any exceptions that were found in the workers.
             self.raise_any_worker_exception(worker_list)
@@ -67,46 +71,46 @@ class Compose(Callable):
         finally:
             running_flag.clear()
    
-    def pump_generator_into_queue_using_background_thread(self, input_generator, input_queue):
+    def pump_generator_into_queue_using_background_thread(self, input_generator, input_queue, running_flag):
         def run():
             
             # Pull items from the generator and put then im the input queue
             for item in input_generator:
-                input_queue.put(item, timeout=self.queue_timeout)
+                input_queue.put(item)
 
             # All done, send an end token to the workers
-            input_queue.put(self.EndToken(), timeout=self.queue_timeout)
+            input_queue.put(self.EndToken(), )
  
         thread = Thread(target=run)
         thread.start()
 
-    def worker_function(self,input_queue, output_queue):
+    def worker_function(self,input_queue, output_queue, running_flag):
      
-        input_generator = self.wrap_queue_as_generator(input_queue)
+        input_generator = self.wrap_queue_as_generator(input_queue, running_flag)
         
         output_generator = self.build_generator_chain( input_generator )
         
         for item in output_generator:
-            output_queue.put(item, timeout=self.queue_timeout)
+            output_queue.put(item)
 
  
-    def wrap_queue_as_generator(self,queue):
-        while True:
+    def wrap_queue_as_generator(self,queue, running_flag):
+        while running_flag.is_set():
             
-            item = queue.get( timeout=self.queue_timeout)
+            item = queue.get( )
             
             if isinstance(item, Compose.EndToken):
                 # Resend the end token to tell other processes
-                queue.put(item, timeout=self.queue_timeout)
+                queue.put(item)
 
                 # Return ends the generator
                 return
             else:
                 yield item
 
-    def yield_items_from_output_queue_until_all_workers_have_stopped(self,output_queue, worker_list):
+    def yield_items_from_output_queue_until_all_workers_have_stopped(self,output_queue, worker_list, running_flag):
         
-        while True:
+        while running_flag.is_set():
             try:
                 yield output_queue.get(timeout=self.queue_timeout)
 
@@ -147,21 +151,25 @@ class Compose(Callable):
                 raise exception
 
 class QueueTimeoutRetryWrapper():
-    def __init__(self, queue, running_flag):
+    # This wrapper prevents processes from becoming stuck while waiting to get or put from a queue.
+    def __init__(self, queue, timeout, running_flag):
         self.queue = queue
         self.running_flag = running_flag
+        self.timeout = timeout
 
-    def put(self,*args,**kwargs):
+    def put(self,item):
+        # Just keep trying while the running flag is set
         while self.running_flag.is_set():
             try:
-                return self.queue.put(*args,**kwargs)
+                return self.queue.put(item, timeout=self.timeout)
             except queue.Full:
                 pass
  
-    def get(self,*args,**kwargs):
+    def get(self):
+        # Just keep trying while the running flag is set
         while self.running_flag.is_set():
             try:
-                return self.queue.get(*args,**kwargs)
+                return self.queue.get(timeout=self.timeout)
             except queue.Empty:        
                 pass
         
