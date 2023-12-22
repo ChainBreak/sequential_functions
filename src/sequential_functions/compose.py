@@ -3,12 +3,11 @@ import types
 import multiprocessing
 import queue
 from threading import Thread
-from.callable import Callable
+from .callable import Callable
+from .queue_generator_wrapper import QueueGeneratorWrapper
 
 class Compose(Callable):
-    # Class used to mark when the last item his entered the queue
-    class EndToken: pass
-
+    
     def __init__(self, *functions, num_processes=0, num_threads=0):
         self.function_list = functions
         self.num_processes = num_processes
@@ -17,7 +16,8 @@ class Compose(Callable):
         self.queue_maxsize = 2
 
     def __call__(self, input_generator):
-        
+        # Main entry point
+
         if self.num_processes > 0:
             
             with ProcessPoolExecutor(max_workers=self.num_processes) as process_pool:
@@ -48,19 +48,19 @@ class Compose(Callable):
         running_flag = manager.Event()
         running_flag.set()
 
-        input_queue = QueueTimeoutRetryWrapper(input_queue, self.queue_timeout, running_flag)
-        retry_output_queue = QueueTimeoutRetryWrapper(output_queue, self.queue_timeout, running_flag)
+        input_queue = QueueGeneratorWrapper(input_queue, self.queue_timeout, running_flag.is_set)
+        output_queue = QueueGeneratorWrapper(output_queue, self.queue_timeout, running_flag.is_set)
 
         try: 
             # Start all the workers and give them the input and output queues
             # Workers read from the input queue and write to the output queue
             worker_list = []
             for i in range(num_workers):
-                worker = pool.submit(self.worker_function, input_queue, retry_output_queue, running_flag) 
+                worker = pool.submit(self.worker_function, input_queue, output_queue) 
                 worker_list.append(worker)
 
             # Read items from generator and put them in queue
-            self.pump_generator_into_queue_using_background_thread(input_generator, input_queue, running_flag)
+            self.pump_generator_into_queue_using_background_thread(input_generator, input_queue)
 
             # Yield items from the output queue as a generator
             yield from self.yield_items_from_output_queue_until_all_workers_have_stopped(output_queue, worker_list, running_flag)
@@ -71,48 +71,34 @@ class Compose(Callable):
         finally:
             running_flag.clear()
    
-    def pump_generator_into_queue_using_background_thread(self, input_generator, input_queue, running_flag):
+    def pump_generator_into_queue_using_background_thread(self, generator, queue):
+
         def run():
-            
-            # Pull items from the generator and put then im the input queue
-            for item in input_generator:
-                input_queue.put(item)
+            # Pull items from the generator and put them in the queue
+            queue.enqueue_from_generator(generator)
 
             # All done, send an end token to the workers
-            input_queue.put(self.EndToken(), )
+            queue.put_end_token()
  
         thread = Thread(target=run)
         thread.start()
 
-    def worker_function(self,input_queue, output_queue, running_flag):
-     
-        input_generator = self.wrap_queue_as_generator(input_queue, running_flag)
+    def worker_function(self,input_queue, output_queue):
         
+        # Convert queue into generator
+        input_generator = input_queue.dequeue_as_generator()
+        
+        # Do work
         output_generator = self.build_generator_chain( input_generator )
         
-        for item in output_generator:
-            output_queue.put(item)
+        # Convert generator into queue
+        output_queue.enqueue_from_generator(output_generator)
 
- 
-    def wrap_queue_as_generator(self,queue, running_flag):
-        while running_flag.is_set():
-            
-            item = queue.get( )
-            
-            if isinstance(item, Compose.EndToken):
-                # Resend the end token to tell other processes
-                queue.put(item)
-
-                # Return ends the generator
-                return
-            else:
-                yield item
-
-    def yield_items_from_output_queue_until_all_workers_have_stopped(self,output_queue, worker_list, running_flag):
+    def yield_items_from_output_queue_until_all_workers_have_stopped(self, output_queue, worker_list, running_flag):
         
         while running_flag.is_set():
             try:
-                yield output_queue.get(timeout=self.queue_timeout)
+                yield output_queue.get(timeout=self.queue_timeout) #QUEUE
 
             except queue.Empty:
                 if not any((worker.running() for worker in worker_list)):
@@ -136,7 +122,7 @@ class Compose(Callable):
 
             # Functions can return None, a signle item or a generator that yields items
             if result_item is None:
-                # Skip this item and continue with the next one
+                # Skip this item and copump_generator_into_queuentinue with the next one
                 continue
             elif isinstance(result_item, types.GeneratorType):
                 yield from result_item
@@ -149,31 +135,3 @@ class Compose(Callable):
             exception = worker.exception()
             if exception is not None:
                 raise exception
-
-class QueueTimeoutRetryWrapper():
-    # This wrapper prevents processes from becoming stuck while waiting to get or put from a queue.
-    def __init__(self, queue, timeout, running_flag):
-        self.queue = queue
-        self.running_flag = running_flag
-        self.timeout = timeout
-
-    def put(self,item):
-        # Just keep trying while the running flag is set
-        while self.running_flag.is_set():
-            try:
-                return self.queue.put(item, timeout=self.timeout)
-            except queue.Full:
-                pass
- 
-    def get(self):
-        # Just keep trying while the running flag is set
-        while self.running_flag.is_set():
-            try:
-                return self.queue.get(timeout=self.timeout)
-            except queue.Empty:        
-                pass
-        
-        
-                
-
-    
